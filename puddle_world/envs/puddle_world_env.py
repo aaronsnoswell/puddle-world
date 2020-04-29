@@ -13,7 +13,7 @@ class PuddleWorldEnv(gym.Env):
     """A discrete multi-modal environment
     """
 
-    metadata = {"render.modes": ["human", "rgb_array"]}
+    metadata = {"render.modes": ["human", "rgb_array", "ascii"]}
 
     # Features of the environment
     features = {"dry": 0, "wet": 1, "goal": 2}
@@ -43,7 +43,7 @@ class PuddleWorldEnv(gym.Env):
 
     @property
     def num_states(self):
-        return self.state_space.n
+        return self.observation_space.n
 
     @property
     def num_features(self):
@@ -53,7 +53,7 @@ class PuddleWorldEnv(gym.Env):
     def num_actions(self):
         return len(self.actions)
 
-    def __init__(self, *, mode="wet", wind=0.2, goal_absorbing=True, seed=None):
+    def __init__(self, *, mode="dry", wind=0.2, goal_absorbing=True, seed=None):
         """C-tor
         
         Args:
@@ -70,8 +70,8 @@ class PuddleWorldEnv(gym.Env):
 
         self.width = 5
         self.height = 5
-        self.state_space = spaces.Discrete(self.width * self.height)
-        self.observation_space = spaces.Discrete(self.num_features)
+        self.observation_space = spaces.Discrete(self.width * self.height)
+        self.feature_space = spaces.Discrete(self.num_features)
         self.action_space = spaces.Discrete(self.num_actions)
 
         # Populate the world
@@ -85,7 +85,9 @@ class PuddleWorldEnv(gym.Env):
                 [0, 0, 0, 0, 0],
             ]
         )
-        self.start_states = [0, 1, 2, 5, 6, 10, 15, 16, 20, 21, 22]
+        self.start_states = np.array(
+            [0, 1, 2, 5, 6, 10, 15, 16, 20, 21, 22], dtype=np.int64
+        )
 
         # Compute s, a, s' transition matrix
         self.transition_matrix = np.zeros(
@@ -135,7 +137,7 @@ class PuddleWorldEnv(gym.Env):
 
     def s2yx(self, state):
         """Convert state to (y, x) coordinates"""
-        assert self.state_space.contains(state)
+        assert self.observation_space.contains(state)
         y = state // self.width
         x = state - y * self.width
         return (y, x)
@@ -151,7 +153,7 @@ class PuddleWorldEnv(gym.Env):
     def oob(self, yx):
         """Check if a y, x coordinate is 'out of bounds'"""
         try:
-            return not self.state_space.contains(self.yx2s(yx))
+            return not self.observation_space.contains(self.yx2s(yx))
         except AssertionError:
             return True
 
@@ -159,7 +161,7 @@ class PuddleWorldEnv(gym.Env):
         """Get an observation for a state"""
         if state is None:
             state = self.state
-        return state
+        return int(state)
 
     def nei(self, state=None):
         """Get neighbours of a state"""
@@ -214,18 +216,58 @@ class PuddleWorldEnv(gym.Env):
         """Test if a episode is complete"""
         if state is None:
             state = self.state
-        return self.feature_matrix.flatten()[state] == self.features["goal"]
+        return bool(self.feature_matrix.flatten()[state] == self.features["goal"])
 
     def render(self, mode="human"):
         """Render the environment"""
-        raise NotImplementedError
+        assert mode in self.metadata["render.modes"]
+
+        if mode == "ascii":
+            return self._ascii()
+        else:
+            raise NotImplementedError
+
+    def _ascii(self):
+        """Get an ascii string representation of the environment"""
+        str_repr = "+" + "-" * self.width + "+\n"
+        for row in range(self.height):
+            str_repr += "|"
+            for col in range(self.width):
+                state = self.yx2s((row, col))
+                state_feature = self.feature_matrix.flatten()[state]
+                if state == self.state:
+                    str_repr += "@"
+                elif state_feature == self.features["dry"]:
+                    str_repr += " "
+                elif state_feature == self.features["wet"]:
+                    str_repr += "#"
+                else:
+                    str_repr += "G"
+            str_repr += "|\n"
+        str_repr += "+" + "-" * self.width + "+"
+        return str_repr
+
+
+from stable_baselines.common.policies import MlpPolicy
+from stable_baselines import PPO2
 
 
 def demo():
     """Demonstrate this task"""
-    env = PuddleWorldEnv()
 
-    o0 = env.reset()
+    env = PuddleWorldEnv(mode="dry")
+
+    # Check the environment is compliant
+    # from stable_baselines.common.env_checker import check_env
+    # check_env(env)
+
+    # Train a PPO2 agent
+    model = PPO2(MlpPolicy, env, verbose=1)
+    model.learn(total_timesteps=int(60e4))
+
+    # Can now evaluate performance...
+
+    print("Done")
 
 
 if __name__ == "__main__":
