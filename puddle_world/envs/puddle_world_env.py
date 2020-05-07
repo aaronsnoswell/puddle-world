@@ -41,6 +41,12 @@ class PuddleWorldEnv(gym.Env):
         "any": [-1, -1, 0],
     }
 
+    # Probability of a non-goal state being wet
+    p_wet = 5.0 / 24.0
+
+    # Probability of a non-goal state being a start state
+    p_start = 11.0 / 24.0
+
     @property
     def num_states(self):
         return self.observation_space.n
@@ -53,10 +59,15 @@ class PuddleWorldEnv(gym.Env):
     def num_actions(self):
         return len(self.actions)
 
-    def __init__(self, *, mode="dry", wind=0.2, goal_absorbing=True, seed=None):
+    def __init__(
+        self, width, height, *, mode="dry", wind=0.2, goal_absorbing=True, seed=None
+    ):
         """C-tor
         
         Args:
+            width (int): Width of PuddleWorld
+            height (int): Height of PuddleWorld
+            
             mode (str): Reward mode to use, options are 'wet', 'dry', and 'any'
             wind (float): Wind (random action) probability
             goal_absorbing (bool): If true, the goal state is absorbing
@@ -66,29 +77,58 @@ class PuddleWorldEnv(gym.Env):
         assert mode in self.reward_modes.keys()
         self.mode = mode
 
+        self.goal_absorbing = goal_absorbing
         self.seed(seed)
 
-        self.width = 5
-        self.height = 5
+        self.width = width
+        self.height = height
         self.observation_space = spaces.Discrete(self.width * self.height)
         self.feature_space = spaces.Discrete(self.num_features)
         self.action_space = spaces.Discrete(self.num_actions)
 
         # Populate the world
         self.wind = wind
-        self.feature_matrix = np.array(
-            [
-                [0, 0, 0, 0, 0],
-                [0, 0, 1, 0, 0],
-                [0, 1, 1, 1, 2],
-                [0, 0, 1, 0, 0],
-                [0, 0, 0, 0, 0],
-            ]
-        )
-        self.start_states = np.array(
-            [0, 1, 2, 5, 6, 10, 15, 16, 20, 21, 22], dtype=np.int64
-        )
 
+        # 1. Select random goal
+        goal_state = np.random.choice(np.arange(self.num_states))
+        self.feature_matrix = np.zeros((self.height, self.width))
+        self.feature_matrix.flat[goal_state] = self.features["goal"]
+
+        while True:
+
+            # 2. Non-goal states may be wet/dry
+            for s, (y, x) in enumerate(
+                it.product(range(self.height), range(self.width))
+            ):
+                if s == goal_state:
+                    continue
+                self.feature_matrix[y, x] = np.random.rand() <= self.p_wet
+
+            # 3. Non-goal states may be start states
+            self.start_states = []
+            for s in range(self.num_states):
+                if s == goal_state:
+                    continue
+                if np.random.rand() <= self.p_start:
+                    self.start_states.append(s)
+            self.start_states = np.array(self.start_states)
+
+            # Check that we have at least one wet and one dry
+            # and that we have at least one start state
+            if (
+                self.features["wet"] in self.feature_matrix.flat
+                and self.features["dry"] in self.feature_matrix
+                and len(self.start_states) > 0
+            ):
+                break
+
+        # Compute s, a, s' transition matrix
+        self.transition_matrix = self._build_transition_matrix()
+
+        self.state = self.reset()
+
+    def _build_transition_matrix(self):
+        """Assemble the transition matrix from self.feature_matrix"""
         # Compute s, a, s' transition matrix
         self.transition_matrix = np.zeros(
             (self.num_states, self.num_actions, self.num_states)
@@ -112,9 +152,9 @@ class PuddleWorldEnv(gym.Env):
                 )
 
                 # Target state gets non-wind probability
-                self.transition_matrix[s1, a, target_state] = 1.0 - wind
+                self.transition_matrix[s1, a, target_state] = 1.0 - self.wind
 
-        if goal_absorbing:
+        if self.goal_absorbing:
             # Make the goal state(s) absorbing
             goal_states = np.where(
                 self.feature_matrix.flatten() == self.features["goal"]
@@ -123,7 +163,7 @@ class PuddleWorldEnv(gym.Env):
             for g in goal_states:
                 self.transition_matrix[g, :, g] = 1.0
 
-        self.state = self.reset()
+        return self.transition_matrix
 
     def seed(self, seed=None):
         """Seed the environment"""
@@ -248,22 +288,52 @@ class PuddleWorldEnv(gym.Env):
         return str_repr
 
 
-from stable_baselines.common.policies import MlpPolicy
-from stable_baselines import PPO2
+class CanonicalPuddleWorldEnv(PuddleWorldEnv):
+    """The canonical puddle world environment"""
+
+    def __init__(self, *, mode="dry", wind=0.2, goal_absorbing=True, seed=None):
+
+        super().__init__(
+            5, 5, mode=mode, wind=wind, goal_absorbing=goal_absorbing, seed=seed
+        )
+
+        # Specify the canonical feature matrix
+        self.feature_matrix = np.array(
+            [
+                [0, 0, 0, 0, 0],
+                [0, 0, 1, 0, 0],
+                [0, 1, 1, 1, 2],
+                [0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0],
+            ]
+        )
+
+        # Specify start states
+        self.start_states = np.array(
+            [0, 1, 2, 5, 6, 10, 15, 16, 20, 21, 22], dtype=np.int64
+        )
+
+        # Re-build transition matrix
+        self.transition_matrix = self._build_transition_matrix()
 
 
 def demo():
     """Demonstrate this task"""
 
-    env = PuddleWorldEnv(mode="dry")
+    from stable_baselines.common.policies import MlpPolicy
+    from stable_baselines import PPO2
+
+    env = CanonicalPuddleWorldEnv(mode="dry")
 
     # Check the environment is compliant
     # from stable_baselines.common.env_checker import check_env
     # check_env(env)
 
+    print(env._ascii())
+
     # Train a PPO2 agent
-    model = PPO2(MlpPolicy, env, verbose=1)
-    model.learn(total_timesteps=int(60e4))
+    # model = PPO2(MlpPolicy, env, verbose=1)
+    # model.learn(total_timesteps=int(60e4))
 
     # Can now evaluate performance...
 
