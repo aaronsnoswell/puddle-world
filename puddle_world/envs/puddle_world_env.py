@@ -36,8 +36,8 @@ class PuddleWorldEnv(gym.Env):
 
     # Different reward modes
     reward_modes = {
-        "wet": [-10, -1, 0],
-        "dry": [-1, -10, 0],
+        "wet": [-100, -1, 0],
+        "dry": [-1, -100, 0],
         "any": [-1, -1, 0],
     }
 
