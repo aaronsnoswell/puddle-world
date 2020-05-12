@@ -316,6 +316,9 @@ class CanonicalPuddleWorldEnv(PuddleWorldEnv):
         # Re-build transition matrix
         self.transition_matrix = self._build_transition_matrix()
 
+        # Finally, reset the environment
+        self.state = self.reset()
+
 
 def demo():
     """Demonstrate this task"""
