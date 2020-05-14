@@ -4,5 +4,5 @@ from puddle_world.envs.puddle_world_env import PuddleWorldEnv, CanonicalPuddleWo
 
 
 register(
-    id="PuddleWorld-v0", entry_point="plane_world.envs:PuddleWorldEnv",
+    id="PuddleWorld-v0", entry_point="puddle_world.envs:PuddleWorldEnv",
 )
