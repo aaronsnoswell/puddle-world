@@ -20,13 +20,20 @@ class EpsilonGreedyPolicy:
         self.epsilon = epsilon
         self.optimal_action_map = {s: np.argmax(q[s]) for s in range(q.shape[0])}
 
+
+    def prob_for_state(self, s):
+        """Get the action probability vector for a given state"""
+        p = np.ones(self.q.shape[1]) * (self.epsilon) / self.q.shape[1]
+        p[self.optimal_action_map[s]] += 1 - self.epsilon
+        return p
+
     def act(self, s):
         if self.epsilon == 0.0:
             return self.optimal_action_map[s]
         else:
-            p = np.ones(self.q.shape[1]) * (1 - self.epsilon) / self.q.shape[1]
-            p[self.optimal_action_map[s]] += self.epsilon
-            return np.random.choice(np.arange(self.q.shape[1]), p=p)
+            return np.random.choice(
+                np.arange(self.q.shape[1]), p=self.prob_for_state[s]
+            )
 
     def get_rollouts(self, env, num_rollouts, *, max_episode_length=None):
         """Get rollouts of this policy in an environment
