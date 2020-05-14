@@ -58,81 +58,101 @@ class EpsilonGreedyPolicy:
         return rollouts
 
 
-def sarsa(env, discount, step_size=0.1, policy_epsilon=0.1, tolerance=0.0001):
-    """SARSA for estimating Q*
-    
-    Args:
-        env (PuddleWorldEnv):
-        discount (float):
-        step_size (float):
-        policy_epsilon (float):
-        tolerance (float):
-    
-    Returns:
-        (numpy array): |S|x|A| Optimal Q* matrix
-    """
-    q = np.random.randn(env.num_states, env.num_actions)
+def value_iteration(env, discount=1.0, tolerance=1e-5):
+    """Value iteration to find the optimal value function"""
 
-    total_steps = 1
-    for episode_iter in it.count():
+    value_fn = np.zeros((env.num_states))
 
-        # Reset the environment
-        s1 = env.reset()
-        policy = EpsilonGreedyPolicy(q, policy_epsilon / total_steps)
-        a1 = policy.act(s1)
+    for _iter in it.count():
+        delta = 0
+        for s in range(env.num_states):
+            v = value_fn[s]
+            value_fn[s] = np.max(
+                [
+                    np.sum(
+                        [
+                            env.transition_matrix[s, a, s2]
+                            * (env.reward(s2) + discount * value_fn[s2])
+                            for s2 in range(env.num_states)
+                        ]
+                    )
+                    for a in range(env.num_actions)
+                ]
+            )
+            delta = max(delta, np.abs(v - value_fn[s]))
 
-        # Roll out an episode
-        for step_iter in it.count():
-            total_steps += 1
-            s2, r1, done, _ = env.step(a1)
-            a2 = policy.act(s2)
-            delta = step_size * (r1 + discount * q[s2, a2] - q[s1, a1])
-            q[s1, a1] += delta
+        # Check value function convergence
+        if delta < tolerance:
+            break
 
-            # Update our plicy
-            policy = EpsilonGreedyPolicy(q, policy_epsilon / total_steps)
+    return value_fn
 
-            s1 = s2
-            a1 = a2
 
-            # If we finished the episode, start a new one
-            if done:
-                break
+def q_from_v(v_star, env, discount=1.0):
+    """Find Q* given V*"""
 
-            # If the Q-function has converged, return
-            if np.abs(delta) < tolerance:
-                return q
+    q_star = np.zeros((env.num_states, env.num_actions))
+
+    for s, a, s2 in it.product(
+        range(env.num_states), range(env.num_actions), range(env.num_states)
+    ):
+        q_star[s, a] += env.transition_matrix[s, a, s2] * (
+            env.reward(s2) + discount * v_star[s2]
+        )
+
+    return q_star
 
 
 def demo():
     """Demonstrate this module"""
 
     import matplotlib.pyplot as plt
-    from puddle_world.envs import CanonicalPuddleWorldEnv
+    from puddle_world.envs import PuddleWorldEnv, CanonicalPuddleWorldEnv
 
     # Find the Optimal Q, V functions for the Canonical Puddle World Environment
     env = CanonicalPuddleWorldEnv(mode="dry")
+    # env = PuddleWorldEnv(mode="dry", width=10, height=5)
     print(env._ascii())
 
-    q_star = sarsa(env, 0.9, tolerance=1e-5)
-    v_star = np.max(q_star, axis=1)
+    v_star = value_iteration(env, 1.0)
+    q_star = q_from_v(v_star, env)
+    pi_star = np.argmax(q_star, axis=1)
+
+    # Plot V*
+    plt.figure()
+    plt.set_cmap("OrRd_r")
+    plt.imshow(v_star.reshape((env.height, env.width)))
+    for (j, i), val in np.ndenumerate(v_star.reshape((env.height, env.width))):
+        plt.text(i, j, "{:.2f}".format(val), ha="center", va="center")
+    plt.title("V*(s)")
 
     # Plot Q*
     ax, figs = plt.subplots(1, 4, sharey=True, figsize=(9, 3))
     for ai, a in enumerate(env.actions.keys()):
         plt.sca(figs[ai])
-        plt.imshow(q_star[:, ai].reshape((5, 5)))
+        plt.imshow(q_star[:, ai].reshape((env.height, env.width)))
+        for (j, i), val in np.ndenumerate(
+            q_star[:, ai].reshape((env.height, env.width))
+        ):
+            plt.text(i, j, "{:.2f}".format(val), ha="center", va="center")
         plt.xlabel("Action {}".format(a))
-    plt.colorbar()
     plt.tight_layout()
-    plt.show()
+    plt.suptitle("Q*(s, a)")
 
-    # Plot V*
+    # Plot pi*
     plt.figure()
-    plt.imshow(v_star.reshape((5, 5)))
-    plt.colorbar()
-    plt.show()
+    plt.imshow(v_star.reshape((env.height, env.width)))
+    for (j, i), a in np.ndenumerate(pi_star.reshape((env.height, env.width))):
+        plt.text(
+            i,
+            j,
+            env.action_symbols[list(env.actions.keys())[a]],
+            ha="center",
+            va="center",
+        )
+    plt.title("π*(s)")
 
+    plt.show()
     print("Done")
 
 
