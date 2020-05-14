@@ -26,6 +26,16 @@ class PuddleWorldEnv(gym.Env):
         "right": 3,
     }
 
+    action_symbols = {
+        "up": "↑",
+        "down": "↓",
+        "left": "←",
+        "right": "→",
+    }
+
+    # Rewards values
+    reward_values = {"very_bad": -10, "bad": -1, "meh": 0}
+
     # Coordinate system is origin at top left, +Y down, +X right
     action_vectors = {
         0: np.array([-1, 0]),
@@ -36,9 +46,9 @@ class PuddleWorldEnv(gym.Env):
 
     # Different reward modes
     reward_modes = {
-        "wet": [-100, -1, 0],
-        "dry": [-1, -100, 0],
-        "any": [-1, -1, 0],
+        "wet": [reward_values["very_bad"], reward_values["bad"], reward_values["meh"]],
+        "dry": [reward_values["bad"], reward_values["very_bad"], reward_values["meh"]],
+        "any": [reward_values["bad"], reward_values["bad"], reward_values["meh"]],
     }
 
     # Probability of a non-goal state being wet
