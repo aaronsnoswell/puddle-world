@@ -323,9 +323,6 @@ class CanonicalPuddleWorldEnv(PuddleWorldEnv):
 def demo():
     """Demonstrate this task"""
 
-    from stable_baselines.common.policies import MlpPolicy
-    from stable_baselines import PPO2
-
     env = CanonicalPuddleWorldEnv(mode="dry")
 
     # Check the environment is compliant
@@ -335,6 +332,8 @@ def demo():
     print(env._ascii())
 
     # Train a PPO2 agent
+    # from stable_baselines.common.policies import MlpPolicy
+    # from stable_baselines import PPO2
     # model = PPO2(MlpPolicy, env, verbose=1)
     # model.learn(total_timesteps=int(60e4))
 
