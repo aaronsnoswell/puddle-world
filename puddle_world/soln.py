@@ -20,6 +20,10 @@ class EpsilonGreedyPolicy:
         self.epsilon = epsilon
         self.optimal_action_map = {s: np.argmax(q[s]) for s in range(q.shape[0])}
 
+    @property
+    def policy_mat(self):
+        """Get stochastic policy matrix"""
+        return np.array([self.prob_for_state(s) for s in range(self.q.shape[0])])
 
     def prob_for_state(self, s):
         """Get the action probability vector for a given state"""
