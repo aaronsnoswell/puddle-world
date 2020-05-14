@@ -69,7 +69,48 @@ class EpsilonGreedyPolicy:
         return rollouts
 
 
-def value_iteration(env, discount=1.0, tolerance=1e-5):
+def policy_evaluation(env, policy, discount=1.0, tolerance=1e-6):
+    """Determine the value function of the given policy
+    
+    Args:
+        env (PuddleWorldEnv): Environment to evaluate against
+        policy (numpy array): |S|x|A| stochastic policy matrix
+        
+        discount (float): Discount factor
+        tolerance (float): State value convergence threshold
+    
+    Returns:
+        (numpy array): |S| state value vector
+    """
+    v_pi = np.zeros(env.num_states)
+
+    for _iteration in it.count():
+        delta = 0
+
+        for s in range(env.num_states):
+            v = v_pi[s]
+            v_pi[s] = np.sum(
+                [
+                    policy[s, a]
+                    * np.sum(
+                        [
+                            env.transition_matrix[s, a, s2]
+                            * (env.reward(s2) + discount * v_pi[s2])
+                            for s2 in range(env.num_states)
+                        ]
+                    )
+                    for a in range(env.num_actions)
+                ]
+            )
+            delta = max(delta, np.abs(v - v_pi[s]))
+
+        if delta < tolerance:
+            break
+
+    return v_pi
+
+
+def value_iteration(env, discount=1.0, tolerance=1e-6):
     """Value iteration to find the optimal value function"""
 
     value_fn = np.zeros((env.num_states))
@@ -128,6 +169,14 @@ def demo():
     v_star = value_iteration(env, 1.0)
     q_star = q_from_v(v_star, env)
     pi_star = np.argmax(q_star, axis=1)
+    pi_star_mat = np.zeros_like(q_star)
+    for s in range(q_star.shape[0]):
+        pi_star_mat[s, pi_star[s]] = 1.0
+    v_pi = policy_evaluation(env, pi_star_mat)
+
+    assert np.allclose(
+        v_star, v_pi
+    ), "There seems to be something wrong with Policy Evaluation or Value Iteration"
 
     # Plot V*
     plt.figure()
