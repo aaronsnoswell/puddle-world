@@ -91,7 +91,7 @@ class PuddleWorldEnv(gym.Env):
 
         # 1. Select random goal
         goal_state = np.random.choice(np.arange(self.num_states))
-        self.feature_matrix = np.zeros((self.height, self.width))
+        self.feature_matrix = np.zeros((self.height, self.width), dtype=int)
         self.feature_matrix.flat[goal_state] = self.features["goal"]
 
         while True:
