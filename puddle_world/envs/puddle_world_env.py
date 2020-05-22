@@ -69,6 +69,13 @@ class PuddleWorldEnv(gym.Env):
     def num_actions(self):
         return len(self.actions)
 
+    @property
+    def start_state_distribution(self):
+        p = np.zeros(self.num_states)
+        p[self.start_states] = 1.0
+        p /= np.sum(p)
+        return p
+
     def __init__(
         self, width, height, *, mode="dry", wind=0.2, goal_absorbing=True, seed=None
     ):
