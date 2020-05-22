@@ -1,4 +1,4 @@
-"""Find optimal Value and Policy functions for PuddleWorlds
+"""Find optimal Value and Policy functions for PuddleWorldEnv environments
 
 """
 
