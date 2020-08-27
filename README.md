@@ -80,20 +80,3 @@ import gym
 from puddle_world.envs import *
 env = CanonicalPuddleWorldEnv(mode='wet')
 ```
-
-## Finding Optimal Solutions
-
-The optimal value functions for any PuddleWorld environment can be found as follows;
-
-```python
-
-import gym
-from puddle_world.envs import *
-from puddle_world.soln import sarsa, EpsilonGreedyPolicy
-import numpy as np
-
-env = gym.make("PuddleWorld-v0", width=5, height=5, mode='dry', seed=1337)
-q_star = sarsa(env, 0.95)
-v_star = np.max(q_star, axis=1)
-pi_star = EpsilonGreedyPolicy(q_star, epsilon=0.0)
-```
