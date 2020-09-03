@@ -361,6 +361,26 @@ class CanonicalPuddleWorldEnv(ExplicitPuddleWorldEnv):
 
         self.state = self.reset()
 
+
+class SmallPuddleWorldEnv(ExplicitPuddleWorldEnv):
+    """A small puddle world environment for debugging"""
+
+    def __init__(self, **kwargs):
+
+        super().__init__(3, 3, **kwargs)
+
+        # Specify the canonical feature matrix
+        self._feature_matrix = np.array([[0, 0, 0], [0, 1, 2], [0, 0, 0],])
+
+        # Specify start states
+        self._start_states = np.array([0, 3, 6], dtype=np.int64)
+
+        goal_state = 5
+
+        # Prepare IExplicitEnv items
+        self._states = np.arange(self.observation_space.n, dtype=int)
+        self._actions = np.arange(self.action_space.n, dtype=int)
+
         self._p0s = np.zeros(self.observation_space.n)
         self._p0s[self._start_states] = 1.0
         self._p0s /= np.sum(self._p0s)
