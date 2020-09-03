@@ -44,6 +44,7 @@ class ExplicitPuddleWorldEnv(
     }
 
     # Rewards values
+    REWARD_VALUES = {"very_bad": -10.0, "bad": -1.0, "meh": 0.0}
 
     # Different reward modes
     REWARD_MODES = {
@@ -145,7 +146,8 @@ class ExplicitPuddleWorldEnv(
             [
                 self.REWARD_MODES[self._mode][self._feature_matrix.flat[s]]
                 for s in self._states
-            ]
+            ],
+            dtype=float,
         )
         self._state_action_rewards = None
         self._state_action_state_rewards = None
