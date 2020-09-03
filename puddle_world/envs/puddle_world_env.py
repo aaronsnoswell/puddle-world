@@ -306,9 +306,9 @@ class ExplicitPuddleWorldEnv(
 class CanonicalPuddleWorldEnv(ExplicitPuddleWorldEnv):
     """The canonical puddle world environment"""
 
-    def __init__(self, *, mode="dry", wind=0.2, seed=None):
+    def __init__(self, **kwargs):
 
-        super().__init__(5, 5, mode=mode, wind=wind, seed=seed)
+        super().__init__(5, 5, **kwargs)
 
         # Specify the canonical feature matrix
         self._feature_matrix = np.array(
@@ -331,6 +331,35 @@ class CanonicalPuddleWorldEnv(ExplicitPuddleWorldEnv):
         # Prepare IExplicitEnv items
         self._states = np.arange(self.observation_space.n, dtype=int)
         self._actions = np.arange(self.action_space.n, dtype=int)
+
+        self._p0s = np.zeros(self.observation_space.n, dtype=float)
+        self._p0s[self._start_states] = 1.0
+        self._p0s /= np.sum(self._p0s)
+
+        self._terminal_state_mask = np.zeros(self.observation_space.n)
+        self._terminal_state_mask[goal_state] = 1.0
+
+        # Compute s, a, s' transition matrix
+        self._t_mat = self._build_transition_matrix()
+
+        self._parents, self._children = compute_parents_children(
+            self._t_mat, self._terminal_state_mask
+        )
+
+        self._gamma = 0.99
+
+        # Build linear state reward vector
+        self._state_rewards = np.array(
+            [
+                self.REWARD_MODES[self._mode][self._feature_matrix.flat[s]]
+                for s in self._states
+            ],
+            dtype=float,
+        )
+        self._state_action_rewards = None
+        self._state_action_state_rewards = None
+
+        self.state = self.reset()
 
         self._p0s = np.zeros(self.observation_space.n)
         self._p0s[self._start_states] = 1.0
