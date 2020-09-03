@@ -44,7 +44,6 @@ class ExplicitPuddleWorldEnv(
     }
 
     # Rewards values
-    REWARD_VALUES = {"very_bad": -10, "bad": -1, "meh": 0}
 
     # Different reward modes
     REWARD_MODES = {
@@ -75,7 +74,7 @@ class ExplicitPuddleWorldEnv(
             seed (int): Random seed to use
         """
 
-        assert mode in self.REWARD_MODES.keys()
+        assert mode in self.REWARD_MODES.keys(), "Invalid mode"
         self._mode = mode
 
         self.seed(seed)
