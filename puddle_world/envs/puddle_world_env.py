@@ -301,6 +301,27 @@ class ExplicitPuddleWorldEnv(
         str_repr += "+" + "-" * self._width + "+"
         return str_repr
 
+    def plot_reward(self, r=None, with_text=False):
+        """Visualize a given reward function"""
+
+        if r is None:
+            r = self._state_rewards
+
+        r = r.reshape((self._height, self._width))
+        plt.imshow(
+            r, cmap="Reds_r", vmin=self.reward_range[0], vmax=self.reward_range[1]
+        )
+        if with_text:
+            for iy, ix in np.ndindex(r.shape):
+                _r_val = r[iy, ix]
+                color = "k"
+                if _r_val < -5:
+                    color = "w"
+                plt.text(ix, iy, _r_val, ha="center", va="center", color=color)
+        plt.tick_params(
+            which="both", bottom=False, labelbottom=False, left=False, labelleft=False
+        )
+
 
 class CanonicalPuddleWorldEnv(ExplicitPuddleWorldEnv):
     """The canonical puddle world environment"""
