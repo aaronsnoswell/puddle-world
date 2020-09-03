@@ -63,7 +63,16 @@ class ExplicitPuddleWorldEnv(
     metadata = {"render.modes": ["human", "rgb_array", "ascii"]}
     reward_range = (min(REWARD_VALUES.values()), max(REWARD_VALUES.values()))
 
-    def __init__(self, width, height, *, mode="dry", wind=0.2, seed=None):
+    def __init__(
+        self,
+        width,
+        height,
+        *,
+        mode="dry",
+        wind=0.2,
+        reward_values=(-10, -1, 0),
+        seed=None
+    ):
         """C-tor
         
         Args:
@@ -72,11 +81,18 @@ class ExplicitPuddleWorldEnv(
             
             mode (str): Reward mode to use, options are 'wet', 'dry', and 'any'
             wind (float): Wind (random action) probability
+            reward_values (list): Optional list of very bad, bad and meh reward values
             seed (int): Random seed to use
         """
 
         assert mode in self.REWARD_MODES.keys(), "Invalid mode"
         self._mode = mode
+
+        assert len(reward_values) == 3, "Invalid parameter reward_values"
+
+        self.REWARD_VALUES["very_bad"] = reward_values[0]
+        self.REWARD_VALUES["bad"] = reward_values[1]
+        self.REWARD_VALUES["meh"] = reward_values[2]
 
         self.seed(seed)
 
