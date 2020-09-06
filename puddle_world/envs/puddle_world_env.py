@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 
 from gym import error, spaces, utils
 from gym.utils import seeding
-from gym.envs.classic_control import rendering
 
 from explicit_env import IExplicitEnv, ExplicitEnvGetters
 from explicit_env.envs.utils import compute_parents_children
